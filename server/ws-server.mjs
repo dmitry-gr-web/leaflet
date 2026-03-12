@@ -1,17 +1,23 @@
 import http from 'node:http'
 import { WebSocketServer } from 'ws'
 
-const PORT = process.env.PORT ? Number(process.env.PORT) : 8080
-const PATH = process.env.WS_PATH ?? '/ws'
+// Налаштування (без process.env, щоб працювало однаково при запуску через `node ...`)
+const PORT = 8080
+const PATH = '/ws'
 
-const PRIMARY_KEY = process.env.API_KEY ?? 'demo-key'
-const EXTRA_KEYS = (process.env.API_KEYS ?? '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean)
+// Ключі доступу
+const PRIMARY_KEY = 'demo-key'
+const EXTRA_KEYS = ['demo-key-2', 'demo-key-3']
 
 // Для демо дозволяємо ще один ключ ("інший юзер")
 const VALID_KEYS = new Set([PRIMARY_KEY, 'demo-key', ...EXTRA_KEYS])
+
+// Метадані для сокетів: не додаємо поля напряму в ws-об’єкт
+const simCountBySocket = new WeakMap()
+
+// Параметри симуляції
+const DEFAULT_SIM_COUNT = 100
+const TARGET_DEAD_PER_SEC = 0.3
 
 process.on('uncaughtException', (err) => {
     console.error('Неперехоплена помилка (uncaughtException):', err)
@@ -115,11 +121,8 @@ const server = http.createServer((req, res) => {
 const wss = new WebSocketServer({ server, path: PATH })
 
 // ---- Глобальна симуляція + broadcast для багатьох клієнтів ----
-let SIM_COUNT = process.env.SIM_COUNT ? Number(process.env.SIM_COUNT) : 100 + Math.floor(mulberry32(42)() * 101)
-if (Number.isNaN(SIM_COUNT) || SIM_COUNT <= 0) {
-    SIM_COUNT = 100 + Math.floor(mulberry32(42)() * 101)
-}
-console.log('SIM_COUNT:', SIM_COUNT, '(env SIM_COUNT =', process.env.SIM_COUNT ?? 'unset', ')')
+let SIM_COUNT = DEFAULT_SIM_COUNT
+console.log('SIM_COUNT:', SIM_COUNT)
 
 const SIM_CENTER = [50.4501, 30.5234]
 
@@ -159,8 +162,7 @@ function buildTickItemsForSim(sim, tickMs) {
     const items = []
 
     const TICK_MS = tickMs
-    const TARGET_DEAD_PER_SEC = process.env.TARGET_DEAD_PER_SEC ? Number(process.env.TARGET_DEAD_PER_SEC) : 0.3
-    const targetDeadPerTick = Number.isFinite(TARGET_DEAD_PER_SEC) ? (TARGET_DEAD_PER_SEC * TICK_MS) / 1000 : 0.3
+    const targetDeadPerTick = (TARGET_DEAD_PER_SEC * TICK_MS) / 1000
 
     const aliveCount = Array.from(sim.state.values()).filter((s) => !s.isDead).length
     const pDead = aliveCount > 0 ? Math.min(1, targetDeadPerTick / aliveCount) : 0
@@ -196,24 +198,21 @@ const broadcastTimer = setInterval(() => {
 
     for (const client of wss.clients) {
         if (client.readyState !== 1) continue
-        const count = client.__simCount ?? SIM_COUNT
+
+        const count = simCountBySocket.get(client) ?? SIM_COUNT
         const { sim } = getOrCreateSim(count)
         const items = buildTickItemsForSim(sim, TICK_MS)
         const payload = JSON.stringify({ type: 'objects', items })
 
         try {
             client.send(payload)
-        } catch (err) {
-            // ignore
+        } catch {
+            // ігноруємо
         }
     }
 }, 1000)
 
 wss.on('close', () => clearInterval(broadcastTimer))
-
-wss.on('listening', () => {
-    console.log('WS сервер слухає підключення на шляху:', PATH)
-})
 
 wss.on('error', (err) => {
     console.error('Помилка WebSocketServer:', err)
@@ -225,10 +224,10 @@ wss.on('connection', (ws, req) => {
     const remote = req.socket?.remoteAddress
     const desiredCount = parseCount(url.searchParams.get('count'))
 
-    // зберігаємо count на сокеті
-    ws.__simCount = desiredCount ?? SIM_COUNT
+    const simCount = desiredCount ?? SIM_COUNT
+    simCountBySocket.set(ws, simCount)
 
-    console.log('Нове WS підключення:', { remote, path: url.pathname, hasKey: Boolean(key), count: ws.__simCount })
+    console.log('Нове WS підключення:', { remote, path: url.pathname, hasKey: Boolean(key), count: simCount })
 
     ws.on('error', (err) => {
         console.error('Помилка WS з’єднання:', { remote, err })
@@ -240,19 +239,23 @@ wss.on('connection', (ws, req) => {
 
     if (!VALID_KEYS.has(String(key))) {
         console.warn('Відхилено підключення: невірний ключ', { remote, key })
-        ws.send(JSON.stringify({ type: 'error', message: 'unauthorized' }))
+        try {
+            ws.send(JSON.stringify({ type: 'error', message: 'unauthorized' }))
+        } catch {
+            // ігноруємо
+        }
         ws.close(1008, 'unauthorized')
         return
     }
 
     // якщо в кімнаті вже 0 живих об'єктів — пересоздаємо при вході нового клієнта
-    ensureSimHasAlive(ws.__simCount)
+    ensureSimHasAlive(simCount)
 
-    console.log('Клієнт авторизований, підписано на broadcast:', { remote, count: ws.__simCount })
+    console.log('Клієнт авторизований, підписано на broadcast:', { remote, count: simCount })
 
     // одразу віддаємо 1-й снапшот
     try {
-        const { sim } = getOrCreateSim(ws.__simCount)
+        const { sim } = getOrCreateSim(simCount)
         ws.send(JSON.stringify({ type: 'objects', items: buildTickItemsForSim(sim, 1000) }))
     } catch (err) {
         console.error('Не вдалося надіслати початковий снапшот клієнту:', { remote, err })
@@ -260,7 +263,6 @@ wss.on('connection', (ws, req) => {
 })
 
 // УВАГА: /reset обробляється всередині http.createServer вище.
-// (remove legacy server.on('request') handler to avoid ERR_HTTP_HEADERS_SENT)
 
 server.on('error', (err) => {
     if (err && err.code === 'EADDRINUSE') {
