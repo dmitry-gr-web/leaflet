@@ -1,5 +1,5 @@
 import { makeAutoObservable } from 'mobx'
-import { REMOVE_LOST_AFTER_MS } from '../constants/app'
+import { DEFAULT_COUNT, DEFAULT_REMOVE_AFTER_SEC, REMOVE_LOST_AFTER_MS } from '../constants/app'
 
 export type RootStore = {
   authStore: AuthStore
@@ -8,8 +8,8 @@ export type RootStore = {
 
 export class AuthStore {
   apiKey: string | null = null
-  viewerCount: number = 100
-  removeAfterSec: number = 20
+  viewerCount: number = DEFAULT_COUNT
+  removeAfterSec: number = DEFAULT_REMOVE_AFTER_SEC
 
   constructor() {
     makeAutoObservable(
@@ -25,12 +25,12 @@ export class AuthStore {
     this.apiKey = window.localStorage.getItem('apiKey')
 
     const rawViewerCount = window.localStorage.getItem('viewerCount')
-    const n = rawViewerCount ? Number(rawViewerCount) : 100
-    this.viewerCount = Number.isFinite(n) && n > 0 ? Math.floor(n) : 100
+    const n = rawViewerCount ? Number(rawViewerCount) : DEFAULT_COUNT
+    this.viewerCount = Number.isFinite(n) && n > 0 ? Math.floor(n) : DEFAULT_COUNT
 
     const rawRemoveAfterSec = window.localStorage.getItem('removeAfterSec')
-    const s = rawRemoveAfterSec ? Number(rawRemoveAfterSec) : 300
-    this.removeAfterSec = Number.isFinite(s) && s > 0 ? Math.floor(s) : 300
+    const s = rawRemoveAfterSec ? Number(rawRemoveAfterSec) : DEFAULT_REMOVE_AFTER_SEC
+    this.removeAfterSec = Number.isFinite(s) && s > 0 ? Math.floor(s) : DEFAULT_REMOVE_AFTER_SEC
   }
 
   setApiKey(key: string) {
@@ -42,13 +42,13 @@ export class AuthStore {
 
   setViewerCount(count: number) {
     const n = Math.floor(count)
-    this.viewerCount = Number.isFinite(n) && n > 0 ? n : 100
+    this.viewerCount = Number.isFinite(n) && n > 0 ? n : DEFAULT_COUNT
     window.localStorage.setItem('viewerCount', String(this.viewerCount))
   }
 
   setRemoveAfterSec(sec: number) {
     const s = Math.floor(sec)
-    this.removeAfterSec = Number.isFinite(s) && s > 0 ? s : 300
+    this.removeAfterSec = Number.isFinite(s) && s > 0 ? s : DEFAULT_REMOVE_AFTER_SEC
     window.localStorage.setItem('removeAfterSec', String(this.removeAfterSec))
   }
 

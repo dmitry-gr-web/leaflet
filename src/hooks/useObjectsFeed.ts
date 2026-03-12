@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createMockStream } from '../api/mockServer'
 import { connectObjectsWs } from '../api/wsClient'
-import { LOST_STALE_MS as DEFAULT_LOST_STALE_MS } from '../constants/app'
+import { LOST_STALE_MS as DEFAULT_LOST_STALE_MS, DEFAULT_REMOVE_AFTER_SEC } from '../constants/app'
 import type { ObjectsStore } from '../stores/rootStore'
 import { useStores } from '../stores/StoresProvider'
 
@@ -34,7 +34,7 @@ export function useObjectsFeed(opts: {
   const markLostMs = DEFAULT_LOST_STALE_MS
 
   // Коли видаляємо втрачені об’єкти: користувацький таймаут
-  const removeAfterLostMs = Math.max(1000, (authStore.removeAfterSec ?? 300) * 1000)
+  const removeAfterLostMs = Math.max(1000, (authStore.removeAfterSec ?? DEFAULT_REMOVE_AFTER_SEC) * 1000)
 
   useEffect(() => {
     connRef.current?.close()
