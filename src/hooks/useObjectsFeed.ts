@@ -114,8 +114,13 @@ export function useObjectsFeed(opts: {
     const resetBase = (import.meta.env.VITE_RESET_URL_BASE as string | undefined) ?? null
 
     // Якщо задано базу — це прод/окремий сервер.
-    // Інакше завжди використовуємо same-origin '/reset' (Vite proxy у деві).
-    const baseUrl = resetBase ? `${resetBase.replace(/\/$/, '')}` : ''
+    // Інакше намагаємось вивести базу з VITE_WS_URL (ws://host:port/ws -> http://host:port).
+    // Якщо і це неможливо — fallback на same-origin '/reset' (працює у деві з Vite proxy).
+    const wsBase = wsUrl
+      ? wsUrl.replace(/^ws(s?):\/\//, 'http$1://').replace(/\/ws\/?$/, '')
+      : null
+
+    const baseUrl = (resetBase ? resetBase.replace(/\/$/, '') : wsBase) ?? ''
     const url = `${baseUrl}/reset?count=${encodeURIComponent(String(mockCount))}`
 
     const res = await fetch(url, {
@@ -126,7 +131,7 @@ export function useObjectsFeed(opts: {
     })
     if (!res.ok) return { ok: false as const, error: `http-${res.status}` as const }
     return { ok: true as const }
-  }, [apiKey, mockCount])
+  }, [apiKey, mockCount, wsUrl])
 
   return { status, mockCount, resetServer }
 }

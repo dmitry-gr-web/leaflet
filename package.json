@@ -5,8 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "server": "node server/start-ws-server.mjs",
-    "dev:all": "(npm run server &) && npm run dev",
+    "server": "node server/ws-server.mjs",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
