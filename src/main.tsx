@@ -4,6 +4,7 @@ import App from './App.tsx'
 import './index.css'
 
 import { CssBaseline, ThemeProvider, createTheme } from '@mui/material'
+import { BrowserRouter } from 'react-router-dom'
 import { StoresProvider } from './stores/StoresProvider'
 import { createRootStore } from './stores/rootStore'
 
@@ -20,7 +21,9 @@ createRoot(document.getElementById('root')!).render(
     <StoresProvider value={rootStore}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <App />
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
       </ThemeProvider>
     </StoresProvider>
   </StrictMode>,

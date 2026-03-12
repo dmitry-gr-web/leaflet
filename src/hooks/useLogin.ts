@@ -38,7 +38,7 @@ export function useLogin(opts: {
       try {
         const ok = await new Promise<boolean>((resolve) => {
           let done = false
-          let opened = false
+          let gotData = false
           let timeoutId: number | null = null
 
           const finish = (v: boolean) => {
@@ -56,19 +56,21 @@ export function useLogin(opts: {
             apiKey: trimmed,
             reconnect: false,
             onObjects: () => {
-              // ignore
+              gotData = true
+              conn.close()
+              finish(true)
             },
-            onStatus: (s) => {
-              if (s === 'open') {
-                opened = true
-                conn.close()
-                finish(true)
-              }
+            onStatus: () => {
+              // ігноруємо
             },
             onClose: () => {
-              if (!opened) finish(false)
+              if (!done && !gotData) finish(false)
             },
-            onError: () => {
+            onError: (err) => {
+              if (err instanceof Error && err.message === 'unauthorized') {
+                finish(false)
+                return
+              }
               finish(false)
             },
           })
@@ -77,7 +79,7 @@ export function useLogin(opts: {
             try {
               conn.close()
             } catch {
-              // ignore
+              // ігноруємо
             }
             finish(false)
           }, 3000)

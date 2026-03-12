@@ -26,14 +26,14 @@ export function useObjectsFeed(opts: {
   const [status, setStatus] = useState<FeedStatus>('closed')
   const connRef = useRef<{ close: () => void } | null>(null)
 
-  // тримаємо актуальний store без тригера перезапуску ефекта
+  // тримаємо актуальний store без тригера перезапуску ефекту
   const objectsStoreRef = useRef<ObjectsStore>(opts.objectsStore)
   objectsStoreRef.current = opts.objectsStore
 
-  // Коли об’єкт вважаємо "lost": фиксированный порог (stale), не завязанный на removeAfterSec.
+  // Коли об’єкт вважаємо "lost": фіксований поріг (stale), не пов’язаний з removeAfterSec.
   const markLostMs = DEFAULT_LOST_STALE_MS
 
-  // когда удаляем потерянные объекты: пользовательский таймаут
+  // Коли видаляємо втрачені об’єкти: користувацький таймаут
   const removeAfterLostMs = Math.max(1000, (authStore.removeAfterSec ?? 300) * 1000)
 
   useEffect(() => {
@@ -68,7 +68,7 @@ export function useObjectsFeed(opts: {
           // eslint-disable-next-line no-console
           console.warn('WS закрито:', { code: ev.code, reason: ev.reason, wasClean: ev.wasClean })
 
-          // 1008 = policy violation (unauthorized)
+          // 1008 = порушення політики (unauthorized)
           if (ev.code === 1008) {
             opts.onAuthError?.('Невірний ключ доступу')
             authStore.logout()

@@ -11,8 +11,8 @@ function normalizeDeg(deg: number) {
 }
 
 function headingToSvgRotation(headingDegFromServer: number) {
-  // 0° = east, 90° = north (backend)
-  // convert to leaflet "north=0"
+  // 0° = схід, 90° = північ (бекенд)
+  // конвертуємо в leaflet-обертання "північ = 0"
   return normalizeDeg(90 - headingDegFromServer)
 }
 
@@ -56,14 +56,11 @@ export const ObjectMarker = observer(function ObjectMarker(props: ObjectMarkerPr
   useEffect(() => {
     if (!tooltipRef) return
     tooltipRef.update()
-  }, [tooltipRef, removeInMs])
-
-  const tooltipKey = `${id}:${lost ? 'lost' : 'ok'}:${lastSeenAt}`
+  }, [tooltipRef, lost, lastSeenAt, removeInMs])
 
   return (
     <Marker position={[lat, lng]} icon={icon} opacity={lost ? 0.65 : 1}>
       <Tooltip
-        key={tooltipKey}
         permanent={false}
         direction="top"
         offset={[0, -8]}
@@ -73,15 +70,20 @@ export const ObjectMarker = observer(function ObjectMarker(props: ObjectMarkerPr
       >
         <div style={{ minWidth: 180, pointerEvents: 'none' }}>
           <div>
-            <b>{id}</b> {lost ? ' (lost)' : ''}
+            <b>{id}</b> {lost ? ' (втрачено)' : ''}
           </div>
           <div>
             {lat.toFixed(5)}, {lng.toFixed(5)}
           </div>
-          <div>heading: {Math.round(headingDeg)}°</div>
+          <div>
+            Курс: {headingDeg.toFixed(0)}°
+          </div>
+          <div>
+            Статус: {lost ? 'втрачено' : 'ok'}
+          </div>
           {lost && removeInMs != null ? (
             <div>
-              Зникне з мапи через: <b>{formatMs(removeInMs)}</b>
+              Видалення через: <b>{formatMs(removeInMs)}</b>
             </div>
           ) : null}
         </div>

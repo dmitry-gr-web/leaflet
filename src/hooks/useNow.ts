@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 
 /**
- * Стабильный "тик" времени, выровненный по границе секунд.
- * Нужен для живого countdown (m:ss) без дрожания.
+ * Стабільний "тик" часу, вирівняний по межах секунд.
+ * Потрібен для живого зворотного відліку (m:ss) без тремтіння.
  */
 export function useNow(tickMs: number = 1000) {
   const [now, setNow] = useState(() => Date.now())

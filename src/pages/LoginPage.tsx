@@ -1,6 +1,7 @@
 import { Alert, Box, Button, CircularProgress, Container, Paper, Snackbar, TextField, Typography } from '@mui/material'
 import { observer } from 'mobx-react-lite'
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
     DEFAULT_COUNT,
     DEFAULT_REMOVE_AFTER_SEC,
@@ -24,6 +25,7 @@ function clampRemoveAfterSec(n: number) {
 
 export const LoginPage = observer(function LoginPage(props: { initialError?: string | null }) {
   const { authStore } = useStores()
+  const navigate = useNavigate()
   const [key, setKey] = useState(authStore.apiKey ?? '')
 
   const wsUrl = import.meta.env.VITE_WS_URL as string | undefined
@@ -52,6 +54,7 @@ export const LoginPage = observer(function LoginPage(props: { initialError?: str
       authStore.setViewerCount(count.normalizeNow())
       authStore.setRemoveAfterSec(removeAfter.normalizeNow())
       authStore.setApiKey(apiKey)
+      navigate('/map', { replace: true })
     },
   })
 
@@ -108,7 +111,7 @@ export const LoginPage = observer(function LoginPage(props: { initialError?: str
             onBlur={() => {
               count.normalizeNow()
             }}
-            helperText={`За замовчуванням ${DEFAULT_COUNT} (1..${MAX_COUNT})`}
+            helperText={`За замовчуванням ${DEFAULT_COUNT} (до ${MAX_COUNT})`}
           />
 
           <TextField
@@ -162,3 +165,4 @@ export const LoginPage = observer(function LoginPage(props: { initialError?: str
     </Container>
   )
 })
+

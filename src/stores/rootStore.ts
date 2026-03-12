@@ -12,7 +12,16 @@ export class AuthStore {
   removeAfterSec: number = 300
 
   constructor() {
-    makeAutoObservable(this)
+    makeAutoObservable(
+      this,
+      {
+        setApiKey: true,
+        setViewerCount: true,
+        setRemoveAfterSec: true,
+        logout: true,
+      },
+      { autoBind: true },
+    )
     this.apiKey = window.localStorage.getItem('apiKey')
 
     const rawViewerCount = window.localStorage.getItem('viewerCount')
@@ -55,6 +64,7 @@ export type TrackedObject = {
   headingDeg: number
   lastSeenAt: number
   lost: boolean
+  lostSinceAt: number | null
 }
 
 export class ObjectsStore {
@@ -62,7 +72,7 @@ export class ObjectsStore {
 
   constructor() {
     makeAutoObservable(this)
-    // prune вызывается извне (в useObjectsFeed) с пользовательским таймаутом.
+    // prune викликається зовні (в useObjectsFeed) з користувацьким таймаутом.
   }
 
   clear() {
@@ -80,7 +90,9 @@ export class ObjectsStore {
         headingDeg: item.headingDeg,
         lastSeenAt: now,
         lost: false,
+        lostSinceAt: null,
       }
+      // важливо: якщо об’єкт знову прийшов з сервера — він точно не lost
       this.objects.set(item.id, existing ? { ...existing, ...next } : next)
     }
   }
@@ -90,6 +102,12 @@ export class ObjectsStore {
     for (const obj of this.objects.values()) {
       if (!obj.lost && now - obj.lastSeenAt > staleMs) {
         obj.lost = true
+        obj.lostSinceAt = now
+      }
+      if (obj.lost && now - obj.lastSeenAt <= staleMs) {
+        // на випадок, якщо об’єкт «ожив» (наприклад, прийшли дані)
+        obj.lost = false
+        obj.lostSinceAt = null
       }
     }
   }
@@ -97,7 +115,9 @@ export class ObjectsStore {
   prune(removeAfterLostMs: number = REMOVE_LOST_AFTER_MS) {
     const now = Date.now()
     for (const [id, obj] of this.objects.entries()) {
-      if (obj.lost && now - obj.lastSeenAt > removeAfterLostMs) {
+      if (!obj.lost) continue
+      const lostSince = obj.lostSinceAt ?? obj.lastSeenAt
+      if (now - lostSince > removeAfterLostMs) {
         this.objects.delete(id)
       }
     }
