@@ -67,22 +67,18 @@ const server = http.createServer((req, res) => {
 
     // ---- HTTP керування (для фронта): POST /reset ----
     if (url.pathname === '/reset') {
-        // ---- CORS лише для /reset (корисно для прод/не-проксі сценаріїв) ----
+        // ---- CORS лише для /reset (потрібно, коли фронт і бек на різних origin) ----
         const origin = req.headers.origin
-        const isAllowedOrigin =
-            typeof origin === 'string' &&
-            (origin.startsWith('http://localhost:') ||
-                origin.startsWith('http://127.0.0.1:') ||
-                origin.startsWith('http://[::1]:') ||
-                origin === 'null')
 
-        if (isAllowedOrigin && origin) {
+        // Дозволяємо будь-який origin (для демо). Якщо треба жорсткіше — зробимо allowlist.
+        if (typeof origin === 'string' && origin.length) {
             res.setHeader('Access-Control-Allow-Origin', origin)
             res.setHeader('Vary', 'Origin')
         }
 
         res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
         res.setHeader('Access-Control-Allow-Headers', 'content-type, x-api-key')
+        res.setHeader('Access-Control-Max-Age', '600')
 
         // preflight
         if (req.method === 'OPTIONS') {

@@ -9,7 +9,7 @@ export type RootStore = {
 export class AuthStore {
   apiKey: string | null = null
   viewerCount: number = 100
-  removeAfterSec: number = 300
+  removeAfterSec: number = 20
 
   constructor() {
     makeAutoObservable(
